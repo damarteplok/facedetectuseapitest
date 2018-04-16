@@ -33,7 +33,37 @@ class App extends Component {
     this.state = {
       input: '',
       imageUrl:'',
+      box: {},
     }
+  }
+
+  calculateFaceLocation = (data) => {
+    // const clarifaiFace = data.outputs[0].data.regions[0].region_info.bounding_box;
+    const clarifaiFace = data.outputs[0].data.regions;
+    console.log(clarifaiFace);
+    var clarifaiFace1=[];
+    const image = document.getElementById('inputimage');
+    const width = Number(image.width);
+    const height = Number(image.height);
+    for (var i=0, len = clarifaiFace.length; i < len; i++) {
+      clarifaiFace1[i] = {
+        leftCol: clarifaiFace[i].region_info.bounding_box.left_col * width,
+        topRow: clarifaiFace[i].region_info.bounding_box.top_row * height,
+        rightCol: width - (clarifaiFace[i].region_info.bounding_box.right_col * width),
+        bottomRow: height - (clarifaiFace[i].region_info.bounding_box.bottom_row * height)
+      }
+    }
+    
+    return clarifaiFace1;
+    
+    
+    
+  }
+
+  displayFaceBox = (box) => {
+    
+    this.setState({box: box});
+    console.log(this.state.box);
   }
 
   onInputChange = (event) => {
@@ -42,17 +72,10 @@ class App extends Component {
 
   onButtonSubmit = () => {
     this.setState({imageUrl: this.state.input})
-    app.models.predict(
-      Clarifai.FACE_DETECT_MODEL, 
-      this.state.input)
-      .then(
-    function(response) {
-      console.log(response.outputs[0].data.regions[0].region_info.bounding_box);
-    },
-    function(err) {
-      // there was an error
-    }
-  );
+    app.models.predict(Clarifai.FACE_DETECT_MODEL,this.state.input)
+      .then(response => this.displayFaceBox(this.calculateFaceLocation(response)))
+      .catch(err => console.log(err));
+      
   }
   render() {
     return (
@@ -61,6 +84,7 @@ class App extends Component {
               params={particlesOptions}
             />
         <Navigation />
+        <div className='flex flex-column'>
         <div className='ma4 mt0 flex-m flex-l justify-center-m justify-center-l'>
           <Logo />
           {/* <Rank /> */}
@@ -68,9 +92,10 @@ class App extends Component {
           onInputChange={this.onInputChange} 
           onButtonSubmit={this.onButtonSubmit}/>
         </div>
-        <FaceRecognition imageUrl={this.state.imageUrl}/>
+        <FaceRecognition box={this.state.box} imageUrl={this.state.imageUrl}/>
 
         <Footer />
+        </div>
         
       </div>
     );
