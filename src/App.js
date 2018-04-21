@@ -1,8 +1,9 @@
 import React, { Component } from 'react';
-import Clarifai from 'clarifai';
+
 import './App.css';
 import Navigation from './Components/Navigation/Navigation';
 import Logo from './Components/Logo/Logo';
+import Rank from './Components/Rank/Rank'
 import ImageLinkForm from './Components/ImageLinkForm/ImageLinkForm';
 import FaceRecognition from './Components/FaceRecognition/FaceRecognition';
 import Footer from './Components/Footer/Footer';
@@ -13,9 +14,7 @@ import Register from './Components/Register/Register';
 
 
 
-const app = new Clarifai.App({
-  apiKey: 'e92f2695fa8743cc92eaf78e1fd526b8'
- });
+
 
 const particlesOptions = {
   particles: {
@@ -30,16 +29,35 @@ const particlesOptions = {
   }
 }
 
+const initialState = {
+  input: '',
+  imageUrl:'',
+  box: {},
+  route: 'signin',
+  isSignedIn: false,
+  user: {
+    id: '',
+    name: '',
+    email: '',
+    entries: 0,
+    joined: '',
+  }
+}
+
 class App extends Component {
   constructor(){
     super();
-    this.state = {
-      input: '',
-      imageUrl:'',
-      box: {},
-      route: 'signin',
-      isSignedIn: false,
-    }
+    this.state = initialState;
+  }
+
+  loadUser = (data) => {
+    this.setState({user : {
+        id: data.id,
+        name: data.name,
+        email: data.email,
+        entries: data.entries,
+        joined: data.joined,
+    }})
   }
 
   // componentDidMount() {
@@ -51,8 +69,8 @@ class App extends Component {
   calculateFaceLocation = (data) => {
     // const clarifaiFace = data.outputs[0].data.regions[0].region_info.bounding_box;
     const clarifaiFace = data.outputs[0].data.regions;
-    console.log(clarifaiFace);
-    var clarifaiFace1=[];
+    
+    let clarifaiFace1=[];
     const image = document.getElementById('inputimage');
     const width = Number(image.width);
     const height = Number(image.height);
@@ -72,7 +90,7 @@ class App extends Component {
   displayFaceBox = (box) => {
     
     this.setState({box: box});
-    console.log(box);
+    
   }
 
   onInputChange = (event) => {
@@ -81,14 +99,37 @@ class App extends Component {
 
   onButtonSubmit = () => {
     this.setState({imageUrl: this.state.input})
-    app.models.predict(Clarifai.FACE_DETECT_MODEL,this.state.input)
-      .then(response => this.displayFaceBox(this.calculateFaceLocation(response)))
+      fetch('http://localhost:3000/imageurl', {
+        method: 'post',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            input: this.state.input
+      })
+    })
+    .then(response => response.json())
+      .then(response => {
+        if (response) {
+          fetch('http://localhost:3000/image', {
+            method: 'put',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                id: this.state.user.id
+          })
+        })
+        .then(response => response.json())
+        .then(count => {
+          this.setState(Object.assign(this.state.user, { entries: count}))
+        })
+        .catch(console.log)
+      }
+        this.displayFaceBox(this.calculateFaceLocation(response))
+      })
       .catch(err => console.log(err));
       
   }
   onRouteChange = (route) => {
     if (route === 'signout') {
-      this.setState({isSignedIn: false})
+      this.setState(initialState)
     } else if (route === 'home') {
       this.setState({isSignedIn: true})
     }
@@ -108,10 +149,15 @@ class App extends Component {
           <div className='flex flex-column'>
             <div className='ma4 mt0 flex-m flex-l justify-center-m justify-center-l'>
               <Logo />
-              {/* <Rank /> */}
+              <div>
+              <Rank
+                name={this.state.user.name}
+                entries={this.state.user.entries}
+              />
               <ImageLinkForm 
               onInputChange={this.onInputChange} 
               onButtonSubmit={this.onButtonSubmit}/>
+              </div>
             </div>
             <FaceRecognition box={box} imageUrl={imageUrl}/>
 
@@ -122,10 +168,10 @@ class App extends Component {
         
         
         :(
-          route === 'signin' ? <Signin onRouteChange={this.onRouteChange}/> 
+          route === 'signin' ? <Signin loadUser={this.loadUser} onRouteChange={this.onRouteChange}/> 
           : (
-            route === 'signout' ? <Signin onRouteChange={this.onRouteChange}/>
-            :<Register onRouteChange={this.onRouteChange}/>
+            route === 'signout' ? <Signin loadUser={this.loadUser} onRouteChange={this.onRouteChange}/>
+            :<Register loadUser={this.loadUser} onRouteChange={this.onRouteChange}/>
           ) 
            
 

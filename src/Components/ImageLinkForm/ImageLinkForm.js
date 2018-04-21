@@ -1,13 +1,13 @@
 import React from 'react';
 import './ImageLinkForm.css';
-import Rank from '../Rank/Rank';
+
 
 
 const ImageLinkForm = ({onInputChange, onButtonSubmit}) => {
     return (
         
             <div className='ma4'>
-                <Rank />
+                
                 <p className='f3'>
                     {'This magic brain will detect faces in your picrtures. Git it try!'}
                 </p>
